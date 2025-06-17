@@ -1,0 +1,7 @@
+---
+- name: Common configuration (swap, kernel, sysctl)
+  hosts: all
+  become: yes
+  roles:
+    - common
+

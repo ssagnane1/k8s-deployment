@@ -1,0 +1,21 @@
+---
+- name: Initialize Kubernetes Master Node
+  hosts: master
+  become: yes
+  tasks:
+    - name: Initialize Kubernetes cluster
+      command: kubeadm init --pod-network-cidr=192.168.0.0/16 --cri-socket=unix:///var/run/cri-dockerd.sock
+      register: init_output
+      args:
+        creates: /etc/kubernetes/admin.conf
+
+    - name: Save kubeadm join command
+      shell: kubeadm token create --print-join-command > /join.sh
+      when: init_output is succeeded
+
+    - name: Configure kubectl for user
+      shell: |
+        mkdir -p /home/lyvs/.kube
+        cp -i /etc/kubernetes/admin.conf /home/lyvs/.kube/config
+        chown lyvs:lyvs /home/lyvs/.kube/config
+
