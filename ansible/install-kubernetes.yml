@@ -43,13 +43,15 @@
         filename: kubernetes
         state: present
 
-    - name: Install kubelet, kubeadm, kubectl
+    - name: Install kubelet, kubeadm, kubectl, containerd
       apt:
         name:
           - kubelet
           - kubeadm
           - kubectl
+          - containerd
         update_cache: yes
+
 
     - name: Hold Kubernetes packages
       apt:

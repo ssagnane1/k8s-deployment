@@ -4,18 +4,44 @@
   become: yes
   tasks:
     - name: Initialize Kubernetes cluster
-      command: kubeadm init --pod-network-cidr=192.168.0.0/16 --cri-socket=unix:///var/run/cri-dockerd.sock
+      command: sudo kubeadm init --pod-network-cidr=192.168.0.0/16
       register: init_output
       args:
         creates: /etc/kubernetes/admin.conf
 
-    - name: Save kubeadm join command
-      shell: kubeadm token create --print-join-command > /join.sh
+    - name: Get kubeadm join command
+      command: kubeadm token create --print-join-command
+      register: join_cmd
       when: init_output is succeeded
+      changed_when: false
 
-    - name: Configure kubectl for user
-      shell: |
-        mkdir -p /home/lyvs/.kube
-        cp -i /etc/kubernetes/admin.conf /home/lyvs/.kube/config
-        chown lyvs:lyvs /home/lyvs/.kube/config
+        
+    - name: Save join command to file
+      copy:
+        content: |
+          #!/bin/bash
+          sudo {{ join_cmd.stdout }} --cri-socket /var/run/containerd/containerd.sock
+        dest: /join.sh
+        mode: '0755'
+      when: join_cmd is defined
 
+    - name: Share join.sh with Ansible controller
+      fetch:
+        src: /join.sh
+        dest: ./join_command/
+        flat: yes
+      when: join_cmd is defined
+
+## pr le groupe workers
+- name: Join Kubernetes Worker Nodes
+  hosts: workers
+  become: yes
+  tasks:
+    - name: Copy join.sh from controller to worker
+      copy:
+        src: ./join_command/join.sh
+        dest: /tmp/join.sh
+        mode: '0755'
+
+    - name: Execute join.sh to join cluster
+      command: /tmp/join.sh

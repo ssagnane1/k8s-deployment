@@ -1,14 +1,16 @@
 ## désactive le swap pr le kubernetes (temporaire)
-- name: Disable swap (temp)
-  command: swapoff -a
-  when: ansible_swaptotal_mb > 0
+- name: Disable swap
+  ansible.builtin.command: swapoff -a
+  become: yes
+  tags:
+    - disable_swap
 
 ## la meme chose mais en permanent
-- name: Permanently disable swap
-  replace:
-    path: /etc/fstab
-    regexp: '^([^#].*?\sswap\s)'
-    replace: '#\1'
+#- name: Permanently disable swap
+#  replace:
+#    path: /etc/fstab
+#    regexp: '^([^#].*?\sswap\s)'
+#    replace: '#\1'
 
 ## copie le fichier modules.conf 
 - name: Load kernel modules
