@@ -1,2 +1,2 @@
 #!/bin/bash
-sudo kubeadm join 172.17.1.4:6443 --token lvhxd1.4uw59is43b1jms6w --discovery-token-ca-cert-hash sha256:03d60389341612a6971299b346403e798b8a330c9e1ab34faf74b8ca569f92ec  --cri-socket /var/run/containerd/containerd.sock
+sudo kubeadm join 172.17.1.4:6443 --token sa7xb3.0x8uibsm93f5pu1u --discovery-token-ca-cert-hash sha256:9b612044ae01bdd30bb6e778a0031e7c807239c6ca3b28a81b43c3b57dd68f9a 

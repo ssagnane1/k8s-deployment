@@ -1,10 +1,24 @@
 ---
+#- name: Patch containerd config to enable CRI plugin
+#  hosts: master
+#  become: yes
+#  tasks:
+#    - name: Replace disabled_plugins by enabled_plugins for cri
+#      replace:
+#        path: /etc/containerd/config.toml
+#        regexp: '^disabled_plugins\s*=.*'
+#        replace: 'enabled_plugins = ["cri"]'
+#
+#    - name: Restart containerd
+#      systemd:
+#        name: containerd
+#        state: restarted
 - name: Initialize Kubernetes Master Node
   hosts: master
   become: yes
   tasks:
     - name: Initialize Kubernetes cluster
-      command: sudo kubeadm init --pod-network-cidr=192.168.0.0/16
+      command: sudo kubeadm init --pod-network-cidr=192.168.1.0/16
       register: init_output
       args:
         creates: /etc/kubernetes/admin.conf
@@ -20,7 +34,7 @@
       copy:
         content: |
           #!/bin/bash
-          sudo {{ join_cmd.stdout }} --cri-socket /var/run/containerd/containerd.sock
+          sudo {{ join_cmd.stdout }}
         dest: /join.sh
         mode: '0755'
       when: join_cmd is defined
