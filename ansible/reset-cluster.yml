@@ -1,0 +1,52 @@
+---
+- name: Reset Kubernetes Cluster
+  hosts: all
+  become: yes
+
+  tasks:
+
+    - name: Drain kubelet and stop services
+      service:
+        name: kubelet
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+
+    - name: Stop containerd
+      service:
+        name: containerd
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+
+    - name: Reset kubeadm
+      command: kubeadm reset --force
+      ignore_errors: yes
+
+    - name: Remove Kubernetes configs
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/cni/net.d
+        - /var/lib/cni
+        - /var/lib/kubelet
+        - /var/lib/calico
+        - /etc/kubernetes
+        - /var/lib/etcd
+        - /opt/cni/bin/calico*
+        - /opt/cni/bin/*cni
+          #- /etc/containerd/config.toml
+
+    - name: Re-enable kubelet service
+      service:
+        name: kubelet
+        state: stopped
+        enabled: yes
+
+    - name: Re-enable containerd service
+      service:
+        name: containerd
+        state: started
+        enabled: yes
+

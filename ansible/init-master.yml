@@ -18,7 +18,7 @@
   become: yes
   tasks:
     - name: Initialize Kubernetes cluster
-      command: sudo kubeadm init --pod-network-cidr=192.168.1.0/16
+      command: sudo kubeadm init --pod-network-cidr=192.168.0.0/16
       register: init_output
       args:
         creates: /etc/kubernetes/admin.conf
@@ -45,6 +45,93 @@
         dest: ./join_command/
         flat: yes
       when: join_cmd is defined
+
+### pr corriger le pb kubectl get pods (ptet ça va marcher)
+#- name: Set kubeconfig for kubectl (copy admin.conf)
+#      become: yes
+#      copy:
+#        src: /etc/kubernetes/admin.conf
+#        dest: /home/{{ ansible_user }}/.kube/config
+#        remote_src: yes
+#      when: init_output is succeeded
+
+        #    - name: Change ownership of kubeconfig
+        #become: yes
+        #file:
+        #path: /home/{{ ansible_user }}/.kube/config
+        #owner: lyvs
+        #group: lyvs
+        #mode: '0600'
+        #when: init_output is succeeded
+
+### solution calico a test
+    
+    - name: Download Tigera Operator manifest
+      get_url:
+        url: https://raw.githubusercontent.com/projectcalico/calico/v3.30.1/manifests/tigera-operator.yaml
+        dest: /tmp/tigera-operator.yaml
+        mode: '0644'
+      when: init_output is succeeded
+
+    - name: Apply Tigera Operator manifest
+      command: kubectl apply -f /tmp/tigera-operator.yaml
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+    - name: Create custom IPPool with IPIP disabled
+      copy:
+        dest: /tmp/custom-ippool.yaml
+        content: |
+          apiVersion: crd.projectcalico.org/v1
+          kind: IPPool
+          metadata:
+            name: custom-pool
+          spec:
+            cidr: 192.168.0.0/16
+            ipipMode: Never
+            natOutgoing: true
+            vxlanMode: Never
+      when: init_output is succeeded
+
+    - name: Wait for Calico CRDs to be registered
+      shell: kubectl get crd ippools.crd.projectcalico.org
+      register: crd_check
+      retries: 20
+      delay: 10
+      until: crd_check.rc == 0
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+
+    - name: Apply custom IPPool manifest
+      command: kubectl apply -f /tmp/custom-ippool.yaml
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf 
+
+    - name: Create .kube directory for lyvs
+      file:
+        path: /home/lyvs/.kube
+        state: directory
+        owner: lyvs
+        group: lyvs
+        mode: '0755'
+
+    - name: Set kubeconfig for kubectl (copy admin.conf encore)
+      become: yes
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/{{ ansible_user }}/.kube/config
+        remote_src: yes
+      when: init_output is succeeded
+
+    - name: Change ownership of kubeconfig (encore)
+      become: yes
+      file:
+        path: /home/{{ ansible_user }}/.kube/config
+        owner: lyvs
+        group: lyvs
+        mode: '0600'
+      when: init_output is succeeded
+   
 
 ## pr le groupe workers
 - name: Join Kubernetes Worker Nodes
